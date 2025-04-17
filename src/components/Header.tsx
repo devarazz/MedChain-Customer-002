@@ -24,7 +24,7 @@ const Header: React.FC = () => {
           <ArrowLeft size={24} className="text-medchain-primary" />
         </button>
       ) : (
-        <div className="w-10"></div> {/* Placeholder for spacing */}
+        <div className="w-10"></div> /* Placeholder for spacing */
       )}
       
       <Logo size="medium" />

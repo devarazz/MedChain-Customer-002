@@ -24,6 +24,7 @@ const Manual: React.FC = () => {
       setIsVerifying(true);
       
       // Process the manually entered batch ID
+      console.log("manual")
       const result = await verifyBatch(batchId);
       
       // Navigate to results with the verification data

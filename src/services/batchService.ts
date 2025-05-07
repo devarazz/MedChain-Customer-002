@@ -105,21 +105,124 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 /**
  * Verifies a batch by ID (QR code or manual input)
  */
-export const verifyBatch = async (batchId: string): Promise<VerificationResult> => {
-  // Simulate API delay
-  await delay(1500);
+// export const verifyBatch = async (batchId: string): Promise<VerificationResult> => {
+
+//   // Simulate API delay
+//   await delay(1500);
   
-  // Check if batch exists in our mock database
-  if (mockBatches[batchId]) {
+//   // Check if batch exists in our mock database
+//   if (mockBatches[batchId]) {
+//     return {
+//       success: true,
+//       batch: mockBatches[batchId]
+//     };
+//   }
+  
+//   // Return failure for non-existent batches
+//   return {
+//     success: false,
+//     message: "Invalid or unverified product. The batch ID was not found in our system."
+//   };
+// };
+
+// export const verifyBatch = async (batchId: string) => {
+//   try {
+//     // Make API call to the Express server
+//     const response = await fetch(`https://1983-115-247-148-182.ngrok-free.app/verify-batch/${batchId}`);
+    
+//     if (!response.ok) {
+//       // Parse error message if available
+//       const errorData = await response.json().catch(() => null);
+//       throw new Error(errorData?.error || 'Failed to verify batch: ${response.status}');
+//     }
+    
+//     // Parse and return the batch data
+//     const data = await response.json();
+    
+//     if (!data.success) {
+//       throw new Error(data.error || "Verification failed");
+//     }
+    
+//     return {
+//       isVerified: true,
+//       batch: data.batch,
+//       message: "Product verification successful!"
+//     };
+//   } catch (error) {
+//     console.error("API error during batch verification:", error);
+//     return {
+//       isVerified: false,
+//       error: error instanceof Error ? error.message : "Unknown error during verification",
+//       message: "Product verification failed!"
+//     };
+//   }
+// };
+import axios from 'axios';
+
+export const verifyBatch = async (batchId: string): Promise<VerificationResult> => {
+  try {
+    // Make API call to the Express server using axios
+    const response = await axios.get(`https://f6c8-2409-40f4-2017-cca4-effc-b60c-7a97-f3cc.ngrok-free.app/verify-batch/${batchId}`, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    console.log("response: ",response)
+    // Axios automatically parses JSON responses
+    const data = response.data;
+    
+    if (!data.success) {
+      console.log("Verification failed with data:", data);
+      return {
+        success: false,
+        message: data.message || "Invalid or unverified product. The batch ID was not found in our system."
+      };
+    }
+    
     return {
       success: true,
-      batch: mockBatches[batchId]
+      batch: data.batch
+    };
+  } catch (error) {
+    console.error("API error during batch verification:", error);
+    
+    // Axios error handling
+    if (axios.isAxiosError(error)) {
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error ||
+                          `Request failed with status: ${error.response?.status || 'unknown'}`;
+      
+      return {
+        success: false,
+        message: errorMessage
+      };
+    }
+    
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Unknown error during verification"
     };
   }
-  
-  // Return failure for non-existent batches
-  return {
-    success: false,
-    message: "Invalid or unverified product. The batch ID was not found in our system."
-  };
 };
+
+/**
+ * Verifies a batch by ID (QR code or manual input)
+ */
+// export const verifyBatch = async (batchId: string): Promise<VerificationResult> => {
+//   // Simulate API delay
+//   await delay(1500);
+  
+//   // Check if batch exists in our mock database
+//   if (mockBatches[batchId]) {
+//     return {
+//       success: true,
+//       batch: mockBatches[batchId]
+//     };
+//   }
+  
+//   // Return failure for non-existent batches
+//   return {
+//     success: false,
+//     message: "Invalid or unverified product. The batch ID was not found in our system."
+//   };
+// };

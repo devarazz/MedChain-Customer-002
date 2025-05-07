@@ -1,5 +1,5 @@
 
-import { Batch, VerificationResult } from "../types/Batch";
+import { Batch } from "../types/Batch";
 
 // Simulated database of batches
 const mockBatches: Record<string, Batch> = {
@@ -157,53 +157,53 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 //     };
 //   }
 // };
-import axios from 'axios';
+// import axios from 'axios';
 
-export const verifyBatch = async (batchId: string): Promise<VerificationResult> => {
-  try {
-    // Make API call to the Express server using axios
-    const response = await axios.get(`https://f6c8-2409-40f4-2017-cca4-effc-b60c-7a97-f3cc.ngrok-free.app/verify-batch/${batchId}`, {
-      headers: {
-        'Accept': 'application/json'
-      }
-    });
-    console.log("response: ",response)
-    // Axios automatically parses JSON responses
-    const data = response.data;
+// export const verifyBatch = async (batchId: string): Promise<VerificationResult> => {
+//   try {
+//     // Make API call to the Express server using axios
+//     const response = await axios.get(`http://localhost:8080/verify-batch/${batchId}`, {
+//       headers: {
+//         'Accept': 'application/json'
+//       }
+//     });
+//     console.log("response: ",response)
+//     // Axios automatically parses JSON responses
+//     const data = response.data;
     
-    if (!data.success) {
-      console.log("Verification failed with data:", data);
-      return {
-        success: false,
-        message: data.message || "Invalid or unverified product. The batch ID was not found in our system."
-      };
-    }
+//     if (!data.success) {
+//       console.log("Verification failed with data:", data);
+//       return {
+//         success: false,
+//         message: data.message || "Invalid or unverified product. The batch ID was not found in our system."
+//       };
+//     }
     
-    return {
-      success: true,
-      batch: data.batch
-    };
-  } catch (error) {
-    console.error("API error during batch verification:", error);
+//     return {
+//       success: true,
+//       batch: data.batch
+//     };
+//   } catch (error) {
+//     console.error("API error during batch verification:", error);
     
-    // Axios error handling
-    if (axios.isAxiosError(error)) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error ||
-                          `Request failed with status: ${error.response?.status || 'unknown'}`;
+//     // Axios error handling
+//     if (axios.isAxiosError(error)) {
+//       const errorMessage = error.response?.data?.message || 
+//                           error.response?.data?.error ||
+//                           `Request failed with status: ${error.response?.status || 'unknown'}`;
       
-      return {
-        success: false,
-        message: errorMessage
-      };
-    }
+//       return {
+//         success: false,
+//         message: errorMessage
+//       };
+//     }
     
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Unknown error during verification"
-    };
-  }
-};
+//     return {
+//       success: false,
+//       message: error instanceof Error ? error.message : "Unknown error during verification"
+//     };
+//   }
+// };
 
 /**
  * Verifies a batch by ID (QR code or manual input)
@@ -226,3 +226,84 @@ export const verifyBatch = async (batchId: string): Promise<VerificationResult> 
 //     message: "Invalid or unverified product. The batch ID was not found in our system."
 //   };
 // };
+
+
+import { getDatabase, ref, get } from 'firebase/database';
+import { initializeApp } from 'firebase/app';
+
+// Define TypeScript interface for verification result
+interface VerificationResult {
+  success: boolean;
+  message?: string;
+  batch?: any;
+}
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyByYYFUMM-q5UhgGpurAXxN14i4VWSqeVw",
+  authDomain: "medchain-3a22f.firebaseapp.com",
+  projectId: "medchain-3a22f",
+  storageBucket: "medchain-3a22f.firebasestorage.app",
+  messagingSenderId: "454135776190",
+  appId: "1:454135776190:web:2d3dd591891f56091aafef",
+  measurementId: "G-BP9H6GTVJW",
+  databaseURL: "https://medchain-3a22f-default-rtdb.firebaseio.com"
+};
+
+// Initialize Firebase (if not already initialized elsewhere)
+// Note: In a real app, you might want to check if Firebase is already initialized
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+
+export const verifyBatch = async (batchId: string): Promise<VerificationResult> => {
+  try {
+    // Create a reference to the specific batch in the Realtime Database
+    const batchRef = ref(database, `batches/${batchId}`);
+    
+    // Get the batch data
+    const snapshot = await get(batchRef);
+    
+    // Check if the batch exists
+    if (!snapshot.exists()) {
+      console.log("Batch not found:", batchId);
+      return {
+        success: false,
+        message: "Invalid or unverified product. The batch ID was not found in our system."
+      };
+    }
+    
+    // Get the batch data from the snapshot
+    const batchData = snapshot.val();
+    
+    // Verify the batch has required properties
+    if (!batchData.medicineName || !batchData.manufacturerName) {
+      console.log("Incomplete batch data:", batchData);
+      return {
+        success: false,
+        message: "Invalid batch data. This product cannot be verified."
+      };
+    }
+    
+    // Check if the batch is flagged as fake
+    if (batchData.status === 'flagged') {
+      return {
+        success: false,
+        message: `WARNING: This batch has been flagged as potentially fake. Reason: ${batchData.flagReason || 'Not specified'}`,
+        batch: batchData
+      };
+    }
+    
+    // For verified batches, return success with the batch data
+    console.log("batchdata: ",batchData)
+    return {
+      success: true,
+      batch: batchData
+    };
+  } catch (error) {
+    console.error("Error during batch verification:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Unknown error during verification"
+    };
+  }
+};
